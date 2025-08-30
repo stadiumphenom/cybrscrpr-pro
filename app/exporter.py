@@ -1,15 +1,29 @@
 import csv
+import json
+import pandas as pd
 from datetime import datetime
+import os
 
-def export_results(results):
-    """
-    Exports the results to a CSV file with a timestamped filename.
-    Each result is written as a single line under the 'Content' column.
-    """
-    filename = f"scraped_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
-    with open(filename, mode="w", newline="", encoding="utf-8") as csvfile:
-        writer = csv.writer(csvfile)
-        writer.writerow(["Content"])  # CSV header
-        for item in results:
-            writer.writerow([item])
-# CSV/JSON/XLSX exporter logic placeholder
+EXPORT_DIR = "exports"
+os.makedirs(EXPORT_DIR, exist_ok=True)
+
+def export_to_csv(data, filename_prefix="scraped_results"):
+    filename = f"{EXPORT_DIR}/{filename_prefix}_{timestamp()}.csv"
+    df = pd.DataFrame(data)
+    df.to_csv(filename, index=False)
+    return filename
+
+def export_to_json(data, filename_prefix="scraped_results"):
+    filename = f"{EXPORT_DIR}/{filename_prefix}_{timestamp()}.json"
+    with open(filename, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    return filename
+
+def export_to_excel(data, filename_prefix="scraped_results"):
+    filename = f"{EXPORT_DIR}/{filename_prefix}_{timestamp()}.xlsx"
+    df = pd.DataFrame(data)
+    df.to_excel(filename, index=False)
+    return filename
+
+def timestamp():
+    return datetime.now().strftime("%Y%m%d_%H%M%S")
