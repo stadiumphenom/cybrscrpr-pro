@@ -6,8 +6,8 @@ import openai
 import os
 import json
 import pandas as pd
-from scraper import scrape_website
-from filters import filter_results
+from app.scraper import scrape_website
+from app.filters import filter_results
 
 # Page setup
 st.set_page_config(page_title="CYBRSCRPR-Pro", layout="wide")
