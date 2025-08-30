@@ -1,11 +1,11 @@
-import requests
-from parser import parse_html
+import time
 
-def scrape_website(url):
+def scrape_website(url, pages=1, delay=1.5):
     """
-    Fetches a URL and extracts structured + readable content.
+    Simulates pagination: returns dummy content for multiple pages.
     """
-    response = requests.get(url, timeout=10)
-    response.raise_for_status()
-
-    return parse_html(response.text)
+    results = []
+    for i in range(1, pages + 1):
+        results.append(f"Content from {url} - Page {i}")
+        time.sleep(delay)
+    return results
