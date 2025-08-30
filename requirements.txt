@@ -4,3 +4,4 @@ openai
 streamlit
 pandas
 xlsxwriter
+tqdm
