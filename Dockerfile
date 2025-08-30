@@ -1,16 +1,16 @@
-# Use an official Python runtime
+# Use official lightweight Python image
 FROM python:3.10-slim
 
 # Set working directory
 WORKDIR /app
 
-# Copy project files into the container
+# Copy all project files into the image
 COPY . .
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the default Streamlit port
+# Expose Streamlit's default port
 EXPOSE 8501
 
 # Run the Streamlit app
