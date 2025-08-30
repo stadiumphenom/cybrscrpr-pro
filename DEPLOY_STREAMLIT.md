@@ -1,1 +1,1 @@
-Follow deployment steps in previous version. UI updated for smart filtering.
+Includes CSV, JSON, Excel export logic via app/exporter.py. Add API keys for Notion/Airtable in Phase 3.
