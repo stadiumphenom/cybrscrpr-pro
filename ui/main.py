@@ -1,11 +1,13 @@
 import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 import streamlit as st
 import openai
 import os
 import json
 import pandas as pd
+
 from app.scraper import scrape_website
 from app.filters import filter_results
 
