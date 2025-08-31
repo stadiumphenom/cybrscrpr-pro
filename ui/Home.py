@@ -1,15 +1,27 @@
+# ui/Home.py
 import sys
 import os
+import pathlib
+
+# --- ensure repo root is importable (MUST be before importing app.*) ---
+ROOT = pathlib.Path(__file__).resolve().parents[1]  # repo root
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 import json
+import random
 import pandas as pd
 import streamlit as st
 import openai
-import random
+
+from app.scraper import scrape
+from app.filters import filter_results
+from app.exporter import export_to_csv, export_to_json, export_to_excel
 
 # -------------------- STREAMLIT CONFIG --------------------
 st.set_page_config(page_title="CYBRSCRPR-Pro", layout="wide")
 
-# -------------------- CSS: MATRIX & RETRO --------------------
+# -------------------- CSS: MATRIX & RETRO (scoped; safe) --------------------
 st.markdown("""
     <style>
     .matrix-bg {
@@ -27,19 +39,16 @@ st.markdown("""
         white-space: pre;
         opacity: 0.15;
     }
-
     @keyframes matrixRain {
         0% { transform: translateY(-100%) rotate(0deg); }
         100% { transform: translateY(100%) rotate(360deg); }
     }
-
     textarea {
         background-color: #0d0d0d !important;
         color: #00FF00 !important;
         font-family: monospace !important;
         border: 1px solid #333 !important;
     }
-
     .stSpinner > div > div {
         color: #00FF00 !important;
         font-weight: bold;
@@ -52,16 +61,9 @@ st.markdown("""
 # -------------------- TITLE / EMOJI HEADER --------------------
 emoji_themes = ["🎭", "🤖", "🧠", "🕵️", "📡", "💾", "💣", "⚡", "👾"]
 chosen_emoji = random.choice(emoji_themes)
-
 st.markdown(f"<h1 style='text-align: center;'>{chosen_emoji} CYBRSCRPR-Pro {chosen_emoji}</h1>", unsafe_allow_html=True)
 st.markdown("## 🚀 Web Content Intelligence Tool")
 st.markdown("Use the sidebar to navigate. Paste URLs below and extract structured content like a pro cyber sleuth.")
-
-# -------------------- IMPORTS --------------------
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-from app.scraper import scrape
-from app.filters import filter_results
-from app.exporter import export_to_csv, export_to_json, export_to_excel
 
 # -------------------- USER INPUTS --------------------
 url_input = st.text_area("Enter URLs to Scrape (one per line):", height=100)
@@ -72,8 +74,8 @@ use_openai = st.checkbox("Use OpenAI to summarize content", value=True)
 
 # -------------------- ACTION --------------------
 if st.button("🕵️ Begin Scraping"):
-    urls = [url.strip() for url in url_input.strip().splitlines() if url.strip()]
-    keywords = [kw.strip() for kw in keywords_input.split(",") if kw.strip()]
+    urls = [u.strip() for u in url_input.strip().splitlines() if u.strip()]
+    keywords = [k.strip() for k in keywords_input.split(",") if k.strip()]
     all_results = []
 
     if not urls:
@@ -82,23 +84,22 @@ if st.button("🕵️ Begin Scraping"):
         for url in urls:
             with st.spinner(f"🌀 Spinning up the cyber engines for {url}..."):
                 try:
-                    scraped = scrape(url, pages=pages, delay=delay)
-
+                    scraped = scrape(url, pages=pages, delay=delay)  # returns list of dicts
                     if keywords:
                         scraped = filter_results(scraped, keywords)
-
                     all_results.extend(scraped)
-
                 except Exception as e:
                     st.error(f"Error scraping {url}: {e}")
 
         # -------------------- DISPLAY RESULTS --------------------
         if all_results:
             st.success(f"✅ Scraped {len(all_results)} items total.")
-
             for i, entry in enumerate(all_results, 1):
-                st.markdown(f"### 🔗 Page {entry.get('page', i)} — [{entry['url']}]({entry['url']})")
-                st.text_area("📄 Parsed Content", entry["content"], height=250)
+                st.markdown(
+                    f"### 🔗 Page {entry.get('page', i)} — "
+                    f"[{entry.get('url', 'source')}]({entry.get('url', '#')})"
+                )
+                st.text_area("📄 Parsed Content", entry.get("content", ""), height=250, key=f"content_{i}")
 
             # -------------------- EXPORT --------------------
             st.subheader("📦 Download Results")
@@ -108,14 +109,16 @@ if st.button("🕵️ Begin Scraping"):
 
             with open(csv_file, "rb") as f:
                 st.download_button("⬇️ Download CSV", f, file_name=os.path.basename(csv_file), mime="text/csv")
-
             with open(json_file, "rb") as f:
                 st.download_button("⬇️ Download JSON", f, file_name=os.path.basename(json_file), mime="application/json")
-
             with open(excel_file, "rb") as f:
-                st.download_button("⬇️ Download Excel", f, file_name=os.path.basename(excel_file), mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                st.download_button(
+                    "⬇️ Download Excel", f,
+                    file_name=os.path.basename(excel_file),
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+                )
 
-            # -------------------- SUMMARIZE --------------------
+            # -------------------- SUMMARIZE (legacy API call) --------------------
             if use_openai:
                 openai.api_key = st.secrets.get("OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
                 if not openai.api_key:
@@ -123,13 +126,11 @@ if st.button("🕵️ Begin Scraping"):
                 else:
                     with st.spinner("🧠 Querying the GPT Vaults..."):
                         try:
-                            full_text = "\n".join(entry["content"] for entry in all_results)[:3500]
+                            full_text = "\n".join(e.get("content", "") for e in all_results)[:3500]
+                            # NOTE: this uses the pre-1.0 OpenAI SDK style; pin openai==0.28
                             response = openai.ChatCompletion.create(
                                 model="gpt-3.5-turbo",
-                                messages=[{
-                                    "role": "user",
-                                    "content": f"Summarize the following web content:\n{full_text}"
-                                }]
+                                messages=[{"role": "user", "content": f"Summarize the following web content:\n{full_text}"}]
                             )
                             summary = response.choices[0].message.content
                             st.subheader("📝 OpenAI Summary")
