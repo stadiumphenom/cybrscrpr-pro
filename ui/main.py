@@ -3,24 +3,17 @@ import os
 import json
 import pandas as pd
 import streamlit as st
-
-st.set_page_config(page_title="CYBRSCRPR-Pro", layout="wide")
-st.markdown("# 🚀 CYBRSCRPR-Pro")
-st.markdown("Navigate using the sidebar.")
-
 import openai
 
-# Allow importing from parent directory
+# Set up import path and Streamlit config
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-# Internal modules
-from app.scraper import scrape_website
-from app.filters import filter_results
-from app.exporter import export_to_csv, export_to_json, export_to_excel
-
-# Streamlit page config
 st.set_page_config(page_title="CYBRSCRPR-Pro", layout="wide")
 st.title("🕵️ CYBRSCRPR-Pro - Web Content Scraper")
+
+# Internal modules
+from app.scraper import scrape
+from app.filters import filter_results
+from app.exporter import export_to_csv, export_to_json, export_to_excel
 
 # --- User Inputs ---
 url_input = st.text_area("Enter URLs to Scrape (one per line):", height=100)
@@ -33,32 +26,35 @@ use_openai = st.checkbox("Use OpenAI to summarize content", value=True)
 if st.button("🚀 Scrape Data"):
     urls = [url.strip() for url in url_input.strip().splitlines() if url.strip()]
     keywords = [kw.strip() for kw in keywords_input.split(",") if kw.strip()]
+    all_results = []
 
     if not urls:
         st.error("Please enter at least one valid URL.")
     else:
-        all_results = []
-
         for url in urls:
             with st.spinner(f"Scraping {url} over {pages} page(s)..."):
                 try:
-                    scraped = scrape_website(url, pages=pages, delay=delay)
+                    scraped = scrape(url, pages=pages, delay=delay)
+
                     if keywords:
                         scraped = filter_results(scraped, keywords)
-                    for item in scraped:
-                        all_results.append({"url": url, "content": item})
+
+                    all_results.extend(scraped)
+
                 except Exception as e:
                     st.error(f"Error scraping {url}: {e}")
 
         if all_results:
             st.success(f"✅ Scraped {len(all_results)} items total.")
 
-            # Display results
+            # --- Display Results ---
             for i, entry in enumerate(all_results, 1):
-                st.markdown(f"**{i}.** `{entry['url']}`\n\n{entry['content']}")
+                st.markdown(f"### 🔗 Page {entry.get('page', i)} — [{entry['url']}]({entry['url']})")
+                st.text_area("📄 Parsed Content", entry["content"], height=250)
 
             # --- Export & Download ---
             st.subheader("📦 Download Results")
+            df = pd.DataFrame(all_results)
 
             csv_file = export_to_csv(all_results)
             json_file = export_to_json(all_results)
