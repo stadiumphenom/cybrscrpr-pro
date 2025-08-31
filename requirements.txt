@@ -6,3 +6,4 @@ pandas
 xlsxwriter
 tqdm
 openpyxl
+pyttsx
