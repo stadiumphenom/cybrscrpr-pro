@@ -1,7 +1,7 @@
 
 import streamlit as st
 import pandas as pd
-from app import exporter
+from app.scraper import scrape  # instead of scrape_website
 
 st.set_page_config(page_title="CYBRSCRPR-Pro", layout="wide")
 st.title("🕵️ CYBRSCRPR-Pro – Export Edition")
