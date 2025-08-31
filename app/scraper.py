@@ -1,31 +1,26 @@
+from playwright.sync_api import sync_playwright
 import time
-import requests
-from bs4 import BeautifulSoup
 
 def scrape_website(url, pages=1, delay=1.5):
-    all_results = []
+    results = []
 
-    for page_num in range(pages):
-        try:
-            print(f"Scraping {url} (Page {page_num + 1})")
-            response = requests.get(url, timeout=10)
-            soup = BeautifulSoup(response.text, "html.parser")
+    with sync_playwright() as p:
+        browser = p.chromium.launch(headless=True)
+        page = browser.new_page()
 
-            # 🧠 Try to extract useful visible text
-            main = soup.find("main") or soup.find("div", {"id": "content"}) or soup
-            paragraphs = main.find_all("p")
-            text = "\n".join(p.get_text(strip=True) for p in paragraphs)
+        for i in range(pages):
+            try:
+                page.goto(url, timeout=15000)
+                page.wait_for_timeout(delay * 1000)
 
-            if not text.strip():
-                text = soup.get_text(strip=True)[:2000]  # Fallback: raw text
+                # Extract visible text from <body>
+                content = page.locator("body").inner_text()
+                text = content.strip()[:5000]
 
-            result = f"Content from {url} — Page {page_num + 1}\n\n{text}"
-            all_results.append(result)
+                results.append(f"📄 Content from {url} — Page {i + 1}\n\n{text}")
+            except Exception as e:
+                results.append(f"❌ Error on page {i+1}: {e}")
 
-            time.sleep(delay)
+        browser.close()
 
-        except Exception as e:
-            error_message = f"❌ Error scraping {url}: {str(e)}"
-            all_results.append(error_message)
-
-    return all_results
+    return results
