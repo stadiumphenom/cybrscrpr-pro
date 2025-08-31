@@ -1,26 +1,37 @@
-from playwright.sync_api import sync_playwright
+# app/scraper.py
 import time
+import requests
+from app.parser import parse_html
 
-def scrape_website(url, pages=1, delay=1.5):
+def scrape(url, pages=1, delay=1.5):
     results = []
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
-        page = browser.new_page()
+    for page_num in range(1, pages + 1):
+        try:
+            # This assumes static URLs, not paginated ones like ?page=2 etc.
+            response = requests.get(url, timeout=10)
+            if response.status_code == 200:
+                parsed_content = parse_html(response.text)
+                combined_text = "\n".join(parsed_content)
 
-        for i in range(pages):
-            try:
-                page.goto(url, timeout=15000)
-                page.wait_for_timeout(delay * 1000)
+                results.append({
+                    "url": url,
+                    "page": page_num,
+                    "content": combined_text
+                })
+            else:
+                results.append({
+                    "url": url,
+                    "page": page_num,
+                    "content": f"❌ Failed with status code {response.status_code}"
+                })
+        except Exception as e:
+            results.append({
+                "url": url,
+                "page": page_num,
+                "content": f"❌ Error scraping page {page_num}: {e}"
+            })
 
-                # Extract visible text from <body>
-                content = page.locator("body").inner_text()
-                text = content.strip()[:5000]
-
-                results.append(f"📄 Content from {url} — Page {i + 1}\n\n{text}")
-            except Exception as e:
-                results.append(f"❌ Error on page {i+1}: {e}")
-
-        browser.close()
+        time.sleep(delay)
 
     return results
