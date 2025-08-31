@@ -1,7 +1,7 @@
 body {
-  background: black !important;
-  color: #00FF00 !important;
-  font-family: "Courier New", monospace !important;
+  background-color: black;
+  color: #00FF00;
+  font-family: "Courier New", monospace;
 }
 
 [data-testid="stAppViewContainer"] {
@@ -12,4 +12,13 @@ body {
 @keyframes cyberRain {
   0% { background-position: 0 0; }
   100% { background-position: 1000px 1000px; }
+}
+
+.terminal {
+  background-color: black;
+  color: #00ff00;
+  font-family: "Courier New", Courier, monospace;
+  padding: 1em;
+  border: 1px solid #00ff00;
+  margin-top: 20px;
 }
